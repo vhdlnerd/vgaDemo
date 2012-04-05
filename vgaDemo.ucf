@@ -1,0 +1,31 @@
+
+#Created by Constraints Editor (xc3s250e-vq100-4) - 2012/03/30
+NET "clk_i" TNM_NET = "clk_i";
+TIMESPEC TS_SysClk = PERIOD "clk_i" 31.125 ns HIGH 50 %;
+
+# PlanAhead Generated physical constraints 
+
+NET "b_o" LOC = P10;
+NET "clk_i" LOC = P89;
+NET "g_o" LOC = P16;
+NET "hSync_o" LOC = P9;
+NET "r_o" LOC = P17;
+NET "rst_i" LOC = P11;
+NET "vSync_o" LOC = P5;
+
+# PlanAhead Generated IO constraints 
+
+NET "b_o" IOSTANDARD = LVTTL;
+NET "clk_i" IOSTANDARD = LVTTL;
+NET "g_o" IOSTANDARD = LVTTL;
+NET "hSync_o" IOSTANDARD = LVTTL;
+NET "r_o" IOSTANDARD = LVTTL;
+NET "rst_i" IOSTANDARD = LVTTL;
+NET "vSync_o" IOSTANDARD = LVTTL;
+NET "rst_i" PULLDOWN;
+
+NET "led_o" LOC = P94 | IOSTANDARD = LVTTL;
+NET "spiSsel_i" LOC = P92 | IOSTANDARD = LVTTL;
+NET "spiSck_i" LOC = P91 | IOSTANDARD = LVTTL;
+NET "spiMosi_i" LOC = P95 | IOSTANDARD = LVTTL;
+NET "spiMiso_o" LOC = P98 | IOSTANDARD = LVTTL;
