@@ -195,7 +195,6 @@ begin
   vSyncStart  <= '1' when vCntrR=V_FRONT_PORCH_END   else '0';
   vSyncEnd    <= '1' when vCntrR=V_SYNC_END          else '0';
   --srReg:  q         set           clear     clk     rst   RST_VAL='0'
---  scReg(vBlankR, vBlankStart, vCntrTcR, clk_i, rst_i);  -- gen the V blanking signal
   scReg(vBlankR, vBlankStart, vBlankEnd and hCntrTcR, clk_i, rst_i);  -- gen the V blanking signal
   scReg(vSyncR,  vSyncStart,  vSyncEnd,               clk_i, rst_i);  -- gen the V Sync signal
 
@@ -211,9 +210,7 @@ begin
       tCntVal_i => DIS_MAX_CNT,     -- terminal count
       cnt_o     => disCntrR);       -- count value
 
-  -- ***Increase margin of display RAM reads: change disCntrEn to (fontXCntrTcR or vSyncR)
-  
-  disCntrEn <= '1' when unsigned(fontXCntrR) = 1 else '0'; -- advance char counter after current one has started shifting out
+  disCntrEn <= '1' when unsigned(fontXCntrR) = 0 and fontXCntrClr = '0' else '0'; -- advance char counter after current one has started shifting out
   reg(currDisRowR, disCntrR, clk_i, rst_i, (disCntrR'range => '0'), (fontYCntrDone and hSyncR) or vSyncR); -- remember current char row
 
   -- Font X direction (column) counter -- used to control the shifter below
@@ -235,8 +232,6 @@ begin
       ldEn_i    => fontXCntrClr,    -- load shifter
       ldVal_i   => fontDataR,       -- load value: a row of font data from the ROM
       reg_o     => shiftDataR);     -- shifted output
-
-    -- ***Increase margin of display RAM reads: change shifter load to (fontXCntrTcR or vSyncR)
 
   -- Font Y (row) counter
   font_y_cntr : entity work.vnCounter(rtl)
