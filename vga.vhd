@@ -9,7 +9,7 @@ use work.vn_pack.all;
 entity vga is
   generic (
     DIS_DESC            : Display_type := DIS_SIM_ONLY;
-    CURSOR_BLINK_PERIOD : natural      := 270 -- in mSec
+    CURSOR_BLINK_PERIOD : natural      := 350 -- in mSec
   );
   port (
     rst_i       : in  std_logic;

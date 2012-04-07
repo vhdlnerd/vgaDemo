@@ -33,7 +33,7 @@ entity vnShiftLeftReg is
            rst_i     : in    std_logic;                 -- Active high reset
            data_i    : in    std_logic := '0';          -- New serial data input
            ldEn_i    : in    std_logic := '0';          -- 1=load counter with ldVal_i/0=count
-           ldVal_i   : in    std_logic_vector := "0";   -- Load value
+           ldVal_i   : in    std_logic_vector;          -- Load value
            shEn_i    : in    std_logic := '1';          -- shift enable
            reg_o	   :   out std_logic_vector           -- The shift register output
 			  );

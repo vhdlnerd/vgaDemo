@@ -9,6 +9,7 @@
 
 library ieee;		use ieee.std_logic_1164.all;
                 use ieee.numeric_std.all;
+                use ieee.math_real.all;
 
 package vn_pack is
 
@@ -33,6 +34,7 @@ function to_std_logic_vector(i : natural; len : natural) return std_logic_vector
 function to_slv(i : natural; len : natural) return std_logic_vector;
 
 function vecLen(n : natural) return natural;
+function vecLen2(n : natural) return natural;
  
 procedure reg(signal   q       :   out std_logic;
               constant d       : in    std_logic;
@@ -74,11 +76,12 @@ end function to_slv;
 
 --
 -- Compute the length of a bit vector that can count up to 'n'
--- If you need a count to count from 0 to 203, you can pass
+-- If you need a counter to count from 0 to 203, you can pass
 -- 203 to this function and it will return 8 (i.e. an 8 bit
 -- counter is required).  255 will return 8, also and 256 will 
 -- return 9.
 --
+-- CONSTANT N_MS20 : INTEGER := INTEGER(CEIL(LOG2(REAL(MS20_DIV))));
 function vecLen(n : natural) return natural is
   variable t : unsigned(31 downto 0) := to_unsigned(n,32);
 begin
@@ -89,6 +92,11 @@ begin
   end loop;
   return 0;
 end function vecLen;
+
+function vecLen2(n : natural) return natural is
+begin
+  return natural(floor(log2(real(n))+1.0));
+end function vecLen2;
 
 procedure reg(signal   q       :   out std_logic;
               constant d       : in    std_logic;

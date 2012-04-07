@@ -26,7 +26,12 @@ architecture rtl of vnDpRam is
   
   type ram_type is array (RAM_LENGTH-1 downto 0) of std_logic_vector (dataaIn'range);
   
-  signal RAM: ram_type;
+  signal RAM: ram_type
+       -- synthesis translate_off
+     --  := (others => (others => '0'))
+       -- synthesis translate_on
+      ;
+
 begin
   process (clkaIn)
   begin

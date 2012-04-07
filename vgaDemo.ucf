@@ -10,7 +10,7 @@ NET "clk_i" LOC = P89;
 NET "g_o" LOC = P16;
 NET "hSync_o" LOC = P9;
 NET "r_o" LOC = P17;
-NET "rst_i" LOC = P11;
+NET "rstLow_i" LOC = P94;
 NET "vSync_o" LOC = P5;
 
 # PlanAhead Generated IO constraints 
@@ -20,12 +20,68 @@ NET "clk_i" IOSTANDARD = LVTTL;
 NET "g_o" IOSTANDARD = LVTTL;
 NET "hSync_o" IOSTANDARD = LVTTL;
 NET "r_o" IOSTANDARD = LVTTL;
-NET "rst_i" IOSTANDARD = LVTTL;
+NET "rstLow_i" IOSTANDARD = LVTTL;
 NET "vSync_o" IOSTANDARD = LVTTL;
-NET "rst_i" PULLDOWN;
+NET "rstLow_i" PULLUP;
 
-NET "led_o" LOC = P94 | IOSTANDARD = LVTTL;
+#NET "led_o" LOC = P94 | IOSTANDARD = LVTTL;
 NET "spiSsel_i" LOC = P92 | IOSTANDARD = LVTTL;
 NET "spiSck_i" LOC = P91 | IOSTANDARD = LVTTL;
 NET "spiMosi_i" LOC = P95 | IOSTANDARD = LVTTL;
 NET "spiMiso_o" LOC = P98 | IOSTANDARD = LVTTL;
+
+
+# Pin AL   BL   CL     SPI      Mega2560 Pin
+# 07  P57  P61  P4     -          
+# 06  P53  P63  P3     - 
+# 05  P40  P66  P2     -   
+# 04  P35  P68  P98    MISO       50
+# 03  P33  P71  P95    MOSI       51
+# 02  P26  P78  P94    - 
+# 01  P23  P83  P92    SSel       53
+# 00  P18  P85  P91    SClk       52
+
+
+
+# Main board wing pin [] to FPGA pin Pxx map
+# -------C-------    -------B-------    -------A-------
+# [GND] [C00] P91    [GND] [B00] P85    P86 [A15]
+# [2V5] [C01] P92    [2V5] [B01] P83    P84 [A14]
+# [3V3] [C02] P94    [3V3] [B02] P78    P79 [A13]
+# [5V0] [C03] P95    [5V0] [B03] P71    P70 [A12]
+#       [C04] P98          [B04] P68    P67 [A11] [5V0]
+#       [C05] P2           [B05] P66    P65 [A10] [3V3]
+#       [C06] P3           [B06] P63    P62 [A09] [2V5]
+#       [C07] P4           [B07] P61    P60 [A08] [GND]
+# [GND] [C08] P5     [GND] [B08] P58    P57 [A07]
+# [2V5] [C09] P9     [2V5] [B09] P54    P53 [A06]
+# [3V3] [C10] P10    [3V3] [B10] P41    P40 [A05]
+# [5V0] [C11] P11    [5V0] [B11] P36    P35 [A04]
+#       [C12] P12          [B12] P34    P33 [A03] [5V0]
+#       [C13] P15          [B13] P32    P26 [A02] [3V3]
+#       [C14] P16          [B14] P25    P23 [A01] [2V5]
+#       [C15] P17          [B15] P22    P18 [A00] [GND]
+
+# Wing pin to FPGA pin map
+
+# Pin AH   BH   CH     VGA    Audio   MicroSD  PS2    Button
+# 15  P86  P22  P17    RED    A1L     -        -      PB1
+# 14  P84  P25  P16    GRN    A1S     -        -      LED1
+# 13  P79  P32  P15    -      A1R     D2       -      PB2
+# 12  P70  P34  P12    -      -       CS       -      LED2
+# 11  P67  P36  P11    -      -       SI       DAT2   PB3
+# 10  P65  P41  P10    BLU    A2L     SCK      CLK2   LED3
+# 09  P62  P54  P9     HS     A2S     SO       DAT1   PB4
+# 08  P60  P58  P5     VS     A2R     D1       CLK1   LED4
+
+# Pin AL   BL   CL     VGA8   Audio   MicroSD  PS2    Button
+# 07  P57  P61  P4     RED    A1L     -        -      PB1
+# 06  P53  P63  P3     GRN    A1S     -        -      LED1
+# 05  P40  P66  P2     -      A1R     D2       -      PB2
+# 04  P35  P68  P98    -      -       CS       -      LED2
+# 03  P33  P71  P95    -      -       SI       DAT2   PB3
+# 02  P26  P78  P94    BLU    A2L     SCK      CLK2   LED3
+# 01  P23  P83  P92    HS     A2S     SO       DAT1   PB4
+# 00  P18  P85  P91    VS     A2R     D1       ClK1   LED4
+
+

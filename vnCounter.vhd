@@ -40,8 +40,8 @@ entity vnCounter is
            upDn_i    : in    std_logic := '1';          -- 1=up/0=down
            cntEn_i   : in    std_logic := '1';          -- Counter enable (counter updates when this is 1)
            ldEn_i    : in    std_logic := '0';          -- 1=load counter with ldVal_i/0=count
-           ldVal_i   : in    std_logic_vector := "0";   -- Load value
-           tCntVal_i : in    std_logic_vector := "1";   -- Terminal Count Value
+           ldVal_i   : in    std_logic_vector;          -- Load value
+           tCntVal_i : in    std_logic_vector;          -- Terminal Count Value
            cnt_o	   :   out std_logic_vector;          -- Current counter value
            tc_o	     :   out std_logic                  -- 1 = Terminal Count reached
 			  );
@@ -103,7 +103,7 @@ begin
       end if;
 
       -- Deal with the terminal count flag:
-      if newCnt = tCntVal_i and cntEn_i = '1' and ldEn_i = '0' and clr_i = '0' then
+      if newCnt = termVal and cntEn_i = '1' and ldEn_i = '0' and clr_i = '0' then
         -- do the easy thing and do not assert TC on a load or clear.
         tcR <= '1';
       else

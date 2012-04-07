@@ -42,14 +42,14 @@ ARCHITECTURE behavior OF vgaDemo_tb IS
     COMPONENT vgaDemo
     PORT(
          clk_i : IN  std_logic;
-         rst_i : IN  std_logic;
+         rstLow_i : IN  std_logic;
          
          spiSsel_i : in   std_logic;
          spiSck_i  : in   std_logic;
          spiMosi_i : in   std_logic;
          spiMiso_o : out  std_logic;
 
-         led_o     : out  std_logic;
+--         led_o     : out  std_logic;
 
          hSync_o : OUT  std_logic;
          vSync_o : OUT  std_logic;
@@ -71,20 +71,29 @@ ARCHITECTURE behavior OF vgaDemo_tb IS
    signal g_o : std_logic;
    signal b_o : std_logic;
 
+   signal spiStart : std_logic := '0';
+   signal spiSsel  : std_logic := '1';
+   signal spiSck   : std_logic := '0';
+   signal spiMosi  : std_logic := '0';
+
+   signal sendData : std_logic_vector(7 downto 0);
+   signal data     : std_logic_vector(7 downto 0) := (others => '0');
+   
    -- Clock period definitions
    constant clk_i_period : time := 31.125 ns;
- 
+   constant SPI_PERIOD   : time := 50.000 ns;
+   
 BEGIN
  
 	-- Instantiate the Unit Under Test (UUT)
    uut: vgaDemo PORT MAP (
           clk_i     => clk_i,
-          rst_i     => rst_i,
-          spiSsel_i => '0',
-          spiSck_i  => '0',
-          spiMosi_i => '0',
+          rstLow_i  => rst_i,
+          spiSsel_i => spiSsel,
+          spiSck_i  => spiSck,
+          spiMosi_i => data(7),
           spiMiso_o => open,
-          led_o     => open,
+--          led_o     => open,
           hSync_o   => hSync_o,
           vSync_o   => vSync_o,
           r_o       => r_o,
@@ -105,16 +114,129 @@ BEGIN
    -- Stimulus process
    stim_proc: process
    begin
-      rst_i <= '1';
+      rst_i <= '0';
       -- hold reset state for 100 ns.
       wait for 500 ns;	
-      rst_i <= '0';
+      rst_i <= '1';
       
-      wait for clk_i_period*10;
+      wait for clk_i_period*16;
 
       -- insert stimulus here 
+      sendData <= x"01";
+      spiStart <= '1';
+      wait for 1 ns;
+      spiStart <= '0';
+      wait until rising_edge(spiSsel);
+      wait for SPI_PERIOD;
+      sendData <= x"02";
+      spiStart <= '1';
+      wait for 1 ns;
+      spiStart <= '0';
+      wait until rising_edge(spiSsel);
+      wait for SPI_PERIOD;
+      
+      sendData <= x"04";
+      spiStart <= '1';
+      wait for 1 ns;
+      spiStart <= '0';
+      wait until rising_edge(spiSsel);
+      wait for SPI_PERIOD;
+      sendData <= x"00";
+      spiStart <= '1';
+      wait for 1 ns;
+      spiStart <= '0';
+      wait until rising_edge(spiSsel);
+      wait for SPI_PERIOD;
+      
+      sendData <= x"05";
+      spiStart <= '1';
+      wait for 1 ns;
+      spiStart <= '0';
+      wait until rising_edge(spiSsel);
+      wait for SPI_PERIOD;
+      sendData <= x"0A";
+      spiStart <= '1';
+      wait for 1 ns;
+      spiStart <= '0';
+      wait until rising_edge(spiSsel);
+      wait for SPI_PERIOD;
 
+      sendData <= x"06";
+      spiStart <= '1';
+      wait for 1 ns;
+      spiStart <= '0';
+      wait until rising_edge(spiSsel);
+      wait for SPI_PERIOD;
+      sendData <= x"42";
+      spiStart <= '1';
+      wait for 1 ns;
+      spiStart <= '0';
+      wait until rising_edge(spiSsel);
+      wait for SPI_PERIOD;
+      
+      sendData <= x"07";
+      spiStart <= '1';
+      wait for 1 ns;
+      spiStart <= '0';
+      wait until rising_edge(spiSsel);
+      wait for SPI_PERIOD;
+      sendData <= x"55";
+      spiStart <= '1';
+      wait for 1 ns;
+      spiStart <= '0';
+      wait until rising_edge(spiSsel);
+      wait for SPI_PERIOD;
+
+      sendData <= x"07";
+      spiStart <= '1';
+      wait for 1 ns;
+      spiStart <= '0';
+      wait until rising_edge(spiSsel);
+      wait for SPI_PERIOD;
+      sendData <= x"AA";
+      spiStart <= '1';
+      wait for 1 ns;
+      spiStart <= '0';
+      wait until rising_edge(spiSsel);
+      wait for SPI_PERIOD;
+
+
+      wait for SPI_PERIOD*4;
+
+      sendData <= x"08";
+      spiStart <= '1';
+      wait for 1 ns;
+      spiStart <= '0';
+      wait until rising_edge(spiSsel);
+      wait for SPI_PERIOD;
+      sendData <= x"37";
+      spiStart <= '1';
+      wait for 1 ns;
+      spiStart <= '0';
+      wait until rising_edge(spiSsel);
+      wait for SPI_PERIOD;
+      
+      
       wait;
    end process;
 
+
+  spi_send : process
+  begin
+    spiSsel <= '1';
+    spiSck  <= '0';
+    wait until spiStart = '1';
+    data    <= sendData;
+    spiSsel <= '0';
+    for i in data'range loop
+      wait for SPI_PERIOD/2;
+      spiSck <= '1';
+      wait for SPI_PERIOD/2;
+      spiSck <= '0';
+      data <= data(6 downto 0) & '0';
+    end loop;
+    wait for SPI_PERIOD/2;
+    spiSsel <= '1';
+  end process;
+  
 END;
