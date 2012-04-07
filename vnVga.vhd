@@ -83,7 +83,7 @@ architecture rtl of vnVga is
   constant CHAR_WIDTH         : natural := vecLen(DIS_DESC.Font.NumChars-1);
 
   type Regs_type is array (0 to NUM_WR_REGS-1) of std_logic_vector(7 downto 0);
-  type Fsm_type  is (IDLE, FILL);
+  type Fsm_type  is (IDLE, FILL, INIT);
   
   signal fsmR         : Fsm_type;
   signal RegsR        : Regs_type;
@@ -104,6 +104,7 @@ architecture rtl of vnVga is
   signal disLdEnR     : std_logic;
   signal disCntEnR    : std_logic;
   signal disClrR      : std_logic;
+  signal disTcR       : std_logic;
 
   signal disWrEnR     : std_logic;
 
@@ -156,6 +157,7 @@ begin
       ldEn_i    => disLdEnR,         -- load enable
       ldVal_i   => disLdValR,        -- load value
       tCntVal_i => DISPLAY_ADDR_MAX,
+      tc_o      => disTcR,           -- terminal count flag
       cnt_o     => disWrAddr         -- count value
       );
 
@@ -214,7 +216,7 @@ begin
   begin
     locReg := RegsR(CURS_POS_HI_REG) & RegsR(CURS_POS_LO_REG);
     if rst_i = '1' then
-      fsmR      <= FILL;
+      fsmR      <= INIT;
       disWrEnR  <= '0';
       wrCharR   <= (others => '0');
       disLdValR <= (others => '0');
@@ -248,7 +250,21 @@ begin
           disLdEnR  <= '0'; -- lock out loading of the counter
           disWrEnR  <= '1';
           disCntEnR <= '1';
-          if disWrAddr = DISPLAY_ADDR_MAX then
+          if disTcR = '1' then
+            disWrEnR  <= '0';
+            disCntEnR <= '0';
+            disClrR   <= '1';
+            fsmR      <= IDLE;
+          end if;
+          
+        when INIT =>
+          -- fill screen with counting pattern
+          -- (only done after a reset)
+          wrCharR   <= disWrAddr(wrCharR'range);
+          disLdEnR  <= '0'; -- lock out loading of the counter
+          disWrEnR  <= '1';
+          disCntEnR <= '1';
+          if disTcR = '1' then
             disWrEnR  <= '0';
             disCntEnR <= '0';
             disClrR   <= '1';
