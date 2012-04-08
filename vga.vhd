@@ -257,7 +257,8 @@ begin
   -- Are we at the font row where the under line cursor needs to be turn on?
   cursUlOn <= '1' when fontYCntrR = CURSOR_UL_ON_CNT else '0';
   --srReg:  q         set        clear      clk    rst   RST_VAL='0'
-  scReg(cursUlOnR, cursUlOn, fontYCntrTcR, clk_i, rst_i);
+--  scReg(cursUlOnR, cursUlOn, fontYCntrTcR, clk_i, rst_i);
+  scReg(cursUlOnR, cursUlOn, fontYCntrClr, clk_i, rst_i);
 
   -- blinking cursor counter -- increments every frame and free running
   blink_cntr : entity work.vnCounter(rtl)
