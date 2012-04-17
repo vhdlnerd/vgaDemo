@@ -27,9 +27,20 @@ use work.vn_pack.all;
 
 entity vgaDemo is
     generic (
---      DIS_DESC          : Display_type := DIS_SIM_ONLY
+    -- For the full eight color mode displays, uncomment the folowing line and one of the
+    -- display mode below it. 
+      TWO_COLOR_ONLY : boolean := false;
 --      DIS_DESC          : Display_type := DIS_640x480_80x40x256
-      DIS_DESC          : Display_type := DIS_1024x768_128x64x256
+      DIS_DESC          : Display_type := DIS_640x480_80x30x128
+--      DIS_DESC          : Display_type := DIS_800x600_100x50x256
+--      DIS_DESC          : Display_type := DIS_1024x768_128x64x256
+--      DIS_DESC          : Display_type := DIS_1152x864_144x54x128
+--      DIS_DESC          : Display_type := DIS_1152x864_144x54x128_FONT2
+--------------------------------------------------------------------------------------
+
+    -- For the two color mode displays, uncomment the folowing line and one of the
+    -- display mode below. 
+--      TWO_COLOR_ONLY : boolean := true;
 --      DIS_DESC          : Display_type := DIS_1280x1024_160x64x128
 --      DIS_DESC          : Display_type := DIS_1600x1200_200x75x128
 --      DIS_DESC          : Display_type := DIS_1152x864_144x72x256
@@ -40,9 +51,6 @@ entity vgaDemo is
            spiSck_i  : in   std_logic;
            spiMosi_i : in   std_logic;
            spiMiso_o : out  std_logic;
-
---           led_o     : out  std_logic;
-           
            hSync_o   : out  std_logic;
            vSync_o   : out  std_logic;
            r_o       : out  std_logic;
@@ -55,7 +63,7 @@ architecture rtl of vgaDemo is
 constant DISPLAY_ADDR_WIDTH : natural := vecLen(DIS_DESC.CharCols*DIS_DESC.CharRows-1);
 constant DIDPLAY_ADDR_MAX   : std_logic_vector(DISPLAY_ADDR_WIDTH-1 downto 0) := to_slv(DIS_DESC.CharCols*DIS_DESC.CharRows-1, DISPLAY_ADDR_WIDTH);
 
-type spiFsm is (IDLE, DATA, ACK_WAIT, WAIT_1);
+type spiFsm is (IDLE, WR_DATA, WR_ACK_WAIT, WR_WAIT_1, RD_ACK_WAIT, RD_SPI_REQ_WAIT1, RD_SPI_REQ_WAIT2, RD_SPI_DATA1, RD_SPI_DATA2, RD_SPI_DATA3);
 
 signal spiFsmR       : spiFsm;
 signal color         : std_logic_vector(2 downto 0);
@@ -76,7 +84,11 @@ signal dataToVgaR    : std_logic_vector(7 downto 0);
 signal dataFromVgaR  : std_logic_vector(7 downto 0);
 
 signal spiData       : std_logic_vector(7 downto 0);
+signal toSpiDataR    : std_logic_vector(7 downto 0);
 signal spiDataEn     : std_logic;
+signal spiWrEnR      : std_logic;
+signal spiReq        : std_logic;
+signal spiWrAck      : std_logic;
 
 
 begin
@@ -108,17 +120,18 @@ spi_inst : entity work.spi_slave(rtl)
         spi_sck_i  => spiSck_i,
         spi_mosi_i => spiMosi_i,
         spi_miso_o => spiMiso_o,
-        di_req_o   => open,             -- preload lookahead data request line
-        di_i       => zero8,            -- parallel load data in (clocked in on rising edge of clk_i)
-        wren_i     => '0',              -- user data write enable
-        wr_ack_o   => open,             -- write acknowledge
+        di_req_o   => spiReq,             -- preload lookahead data request line
+        di_i       => toSpiDataR,            -- parallel load data in (clocked in on rising edge of clk_i)
+        wren_i     => spiWrEnR,              -- user data write enable
+        wr_ack_o   => spiWrAck,             -- write acknowledge
         do_valid_o => spiDataEn,        -- do_o data valid strobe, valid during one clk_i rising edge.
         do_o       => spiData           -- parallel output (clocked out on falling clk_i)
     );
 
 vga_inst : entity work.vnVga(rtl)
   generic map(
-    DIS_DESC          => DIS_DESC
+    DIS_DESC          => DIS_DESC,
+    TWO_COLOR_ONLY    => TWO_COLOR_ONLY
   )
   port map (
     rst_i       =>  rst,
@@ -146,32 +159,79 @@ vga_inst : entity work.vnVga(rtl)
       spiFsmR    <= IDLE;
       addrR      <= (others => '0');
       dataToVgaR <= (others => '0');
+      toSpiDataR <= (others => '0');
       weR        <= '0';
       stbR       <= '0';
+      spiWrEnR   <= '0';
     elsif rising_edge(clk) then
-      weR  <= '0';
-      stbR <= '0';
+      weR      <= '0';
+      stbR     <= '0';
+      spiWrEnR <= '0';
       case spiFsmR is
         when IDLE =>
           if spiDataEn = '1' then
-            addrR <= spiData;
-            spiFsmR <= WAIT_1;
+            addrR   <= spiData;
+            if spiData(7) = '0' then
+              -- a write
+              spiFsmR <= WR_WAIT_1;
+            else
+              -- a read
+              weR        <= '0';
+              stbR       <= '1';
+              spiFsmR    <= RD_ACK_WAIT;
+            end if;
+          end if;
+
+        when RD_ACK_WAIT =>
+          weR        <= '0';
+          stbR       <= '1';
+          toSpiDataR <= dataFromVgaR;
+          if ack = '1' then
+            weR        <= '0';
+            stbR       <= '0';
+            spiFsmR    <= RD_SPI_REQ_WAIT2;
+          end if;
+
+        when RD_SPI_REQ_WAIT1 =>
+          if spiReq = '1' then
+            spiFsmR <= RD_SPI_REQ_WAIT2;
+          end if;
+
+        when RD_SPI_REQ_WAIT2 =>
+          if spiReq = '1' then
+            spiWrEnR <= '1';
+            spiFsmR <= RD_SPI_DATA1;
+          end if;
+
+        when RD_SPI_DATA1 =>
+          if spiWrAck = '1' then
+            spiFsmR <= RD_SPI_DATA2;
           end if;
          
-        when WAIT_1 =>
+        when RD_SPI_DATA2 =>
+          if spiDataEn = '1' then
+            spiFsmR <= RD_SPI_DATA3;
+          end if;
+
+        when RD_SPI_DATA3 => 
           if spiDataEn = '0' then
-            spiFsmR <= DATA;
+            spiFsmR <= IDLE;
+          end if;
+         
+        when WR_WAIT_1 =>
+          if spiDataEn = '0' then
+            spiFsmR <= WR_DATA;
           end if;
             
-        when DATA =>
+        when WR_DATA =>
           if spiDataEn = '1' then
             dataToVgaR <= spiData;
             weR        <= '1';
             stbR       <= '1';
-            spiFsmR    <= ACK_WAIT;
+            spiFsmR    <= WR_ACK_WAIT;
           end if;
           
-        when ACK_WAIT =>
+        when WR_ACK_WAIT =>
           weR  <= '1';
           stbR <= '1';
           if ack = '1' then

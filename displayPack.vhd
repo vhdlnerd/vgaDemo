@@ -82,6 +82,14 @@ package display_pack is
     CharRows         => VGA_640x480_60.V_Visible/FONT_8X16X128.Height   -- =30
   );
 
+  constant DIS_1152x864_144x54x128 : Display_type := (
+    Vga              => VGA_1152x864_60,
+    CursorHeight     => 3,
+    Font             => FONT_8X16X128,
+    CharCols         => VGA_1152x864_60.H_Visible/FONT_8X16X128.Width,   -- =144
+    CharRows         => VGA_1152x864_60.V_Visible/FONT_8X16X128.Height   -- =54
+  );
+
   constant DIS_1024x768_128x48x128 : Display_type := (
     Vga              => VGA_1024x768_60,
     CursorHeight     => 3,
@@ -104,6 +112,14 @@ package display_pack is
     Font             => FONT_8X16X128,
     CharCols         => VGA_1600x1200_60.H_Visible/FONT_8X16X128.Width,   -- =200
     CharRows         => VGA_1600x1200_60.V_Visible/FONT_8X16X128.Height   -- =75
+  );
+
+  constant DIS_1152x864_144x54x128_FONT2 : Display_type := (
+    Vga              => VGA_1152x864_60,
+    CursorHeight     => 3,
+    Font             => FONT_8X16X128_2,
+    CharCols         => VGA_1152x864_60.H_Visible/FONT_8X16X128_2.Width,   -- =144
+    CharRows         => VGA_1152x864_60.V_Visible/FONT_8X16X128_2.Height   -- =54
   );
   
 end display_pack;

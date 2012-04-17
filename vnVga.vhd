@@ -64,19 +64,39 @@ architecture rtl of vnVga is
     return f;
   end function vnIF;
   
-  -- define the register map for writable registers.
-  constant CURSOR_CNTL_REG    : natural := 0;
-  constant FG_COLOR_REG       : natural := 1;
-  constant BG_COLOR_REG       : natural := 2;
-  constant COLOR_INV_REG      : natural := 3;
-  constant CURS_POS_HI_REG    : natural := 4;
-  constant CURS_POS_LO_REG    : natural := 5;
-  constant CHAR_WR_REG        : natural := 6;
-  constant CHAR_WR_INCR_REG   : natural := 7;
-  constant FILL_HOME_REG      : natural := 8;
---  constant SCROLL_REG      : natural := 9; -- future feature
-  
   constant NUM_WR_REGS        : natural := 16;
+  constant NUM_RD_REGS        : natural := 32;
+  --constant RD_BACK_WIDTH         : natural := vecLen(NUM_RD_REGS-1);   -- Stupid XST! This will cause errors later! Why!?
+  constant RD_BACK_WIDTH         : natural := 5;    -- XST works with this.
+
+  -- define the register map for writable registers.
+  constant WR_CURSOR_CNTL_REG    : natural := 0;
+  constant WR_FG_COLOR_REG       : natural := 1;
+  constant WR_BG_COLOR_REG       : natural := 2;
+  constant WR_COLOR_INV_REG      : natural := 3;
+  constant WR_CURS_POS_HI_REG    : natural := 4;
+  constant WR_CURS_POS_LO_REG    : natural := 5;
+  constant WR_CHAR_WR_REG        : natural := 6;
+  constant WR_CHAR_WR_INCR_REG   : natural := 7;
+  constant WR_FILL_HOME_REG      : natural := 8;
+--  constant SCROLL_REG      : natural := 9; -- future feature
+
+  constant RD_CURSOR_CNTL_REG    : std_logic_vector(RD_BACK_WIDTH-1 downto 0) := to_slv(0,RD_BACK_WIDTH);
+  constant RD_FG_COLOR_REG       : std_logic_vector(RD_BACK_WIDTH-1 downto 0) := to_slv(1,RD_BACK_WIDTH);
+  constant RD_BG_COLOR_REG       : std_logic_vector(RD_BACK_WIDTH-1 downto 0) := to_slv(2,RD_BACK_WIDTH);
+  constant RD_COLOR_INV_REG      : std_logic_vector(RD_BACK_WIDTH-1 downto 0) := to_slv(3,RD_BACK_WIDTH);
+  constant RD_CURS_POS_HI_REG    : std_logic_vector(RD_BACK_WIDTH-1 downto 0) := to_slv(4,RD_BACK_WIDTH);
+  constant RD_CURS_POS_LO_REG    : std_logic_vector(RD_BACK_WIDTH-1 downto 0) := to_slv(5,RD_BACK_WIDTH);
+  constant RD_CHAR               : std_logic_vector(RD_BACK_WIDTH-1 downto 0) := to_slv(6,RD_BACK_WIDTH);
+  constant RD_CHAR_INCR          : std_logic_vector(RD_BACK_WIDTH-1 downto 0) := to_slv(7,RD_BACK_WIDTH);
+  constant RD_CHAR_ATTR          : std_logic_vector(RD_BACK_WIDTH-1 downto 0) := to_slv(8,RD_BACK_WIDTH);
+
+  constant RD_DIS_COLS           : std_logic_vector(RD_BACK_WIDTH-1 downto 0) := to_slv(16#10#,RD_BACK_WIDTH);
+  constant RD_DIS_ROWS           : std_logic_vector(RD_BACK_WIDTH-1 downto 0) := to_slv(16#11#,RD_BACK_WIDTH);
+  constant RD_DIS_COLOR_BITS     : std_logic_vector(RD_BACK_WIDTH-1 downto 0) := to_slv(16#12#,RD_BACK_WIDTH);
+  constant RD_DIS_COLOR_MODE     : std_logic_vector(RD_BACK_WIDTH-1 downto 0) := to_slv(16#13#,RD_BACK_WIDTH);
+  constant RD_DIS_FONT_ID        : std_logic_vector(RD_BACK_WIDTH-1 downto 0) := to_slv(16#14#,RD_BACK_WIDTH);
+  
   constant DISPLAY_DATA_WIDTH : natural := vnIF(TWO_COLOR_ONLY, 9, 16);
   constant DISPLAY_ADDR_WIDTH : natural := vecLen(DIS_DESC.CharCols*DIS_DESC.CharRows-1);
   constant DISPLAY_ADDR_MAX   : std_logic_vector(DISPLAY_ADDR_WIDTH-1 downto 0) := to_slv(DIS_DESC.CharCols*DIS_DESC.CharRows-1, DISPLAY_ADDR_WIDTH);
@@ -115,6 +135,7 @@ architecture rtl of vnVga is
 
   signal ones         : std_logic_vector(DISPLAY_ADDR_WIDTH-1 downto 0);
 
+  signal rdAckR       : std_logic;
 begin
   vga_inst : entity work.vga(rtl)
     generic map(
@@ -190,7 +211,7 @@ begin
     disWrData(15 downto 14)  <= "00";
   end generate FULL_COLOR;
 
-  ack_o <= stb_i;
+  ack_o <= (stb_i and we_i) or (rdAckR and stb_i);
   
   -- Create the writable registers:
   WR_REGS : for i in RegsR'range generate
@@ -204,17 +225,17 @@ begin
   end generate WR_REGS;
   
   -- Map the write regs to some signals
-  cCntlR      <= RegsR(CURSOR_CNTL_REG)(cCntlR'range);
-  currFgColor <= RegsR(FG_COLOR_REG)(currFgColor'range);
-  currBgColor <= RegsR(BG_COLOR_REG)(currBgColor'range);
-  colorSwapR  <= RegsR(COLOR_INV_REG)(0);
+  cCntlR      <= RegsR(WR_CURSOR_CNTL_REG)(cCntlR'range);
+  currFgColor <= RegsR(WR_FG_COLOR_REG)(currFgColor'range);
+  currBgColor <= RegsR(WR_BG_COLOR_REG)(currBgColor'range);
+  colorSwapR  <= RegsR(WR_COLOR_INV_REG)(0);
   
   -- FSM to handle the different "commands":
   --         write char, write char w/incr, fill screen
   fsm : process(clk_i, rst_i)
     variable locReg : std_logic_vector(15 downto 0);
   begin
-    locReg := RegsR(CURS_POS_HI_REG) & RegsR(CURS_POS_LO_REG);
+    locReg := RegsR(WR_CURS_POS_HI_REG) & RegsR(WR_CURS_POS_LO_REG);
     if rst_i = '1' then
       fsmR      <= INIT;
       disWrEnR  <= '0';
@@ -228,20 +249,20 @@ begin
       disCntEnR <= '0';
       disClrR   <= '0';
       disLdValR <= locReg(disLdValR'range);
-      disLdEnR  <= RegsWrR(CURS_POS_LO_REG);
+      disLdEnR  <= RegsWrR(WR_CURS_POS_LO_REG);
 
       case fsmR is
         when IDLE =>
           -- wait for a command to work on
-          if RegsWrR(CHAR_WR_REG) = '1' then
-            wrCharR   <= RegsR(CHAR_WR_REG)(wrCharR'range);
+          if RegsWrR(WR_CHAR_WR_REG) = '1' then
+            wrCharR   <= RegsR(WR_CHAR_WR_REG)(wrCharR'range);
             disWrEnR  <= '1';
-          elsif RegsWrR(CHAR_WR_INCR_REG) = '1' then
-            wrCharR   <= RegsR(CHAR_WR_INCR_REG)(wrCharR'range);
+          elsif RegsWrR(WR_CHAR_WR_INCR_REG) = '1' then
+            wrCharR   <= RegsR(WR_CHAR_WR_INCR_REG)(wrCharR'range);
             disWrEnR  <= '1';
             disCntEnR <= '1';
-          elsif RegsWrR(FILL_HOME_REG) = '1' then
-            wrCharR   <= RegsR(FILL_HOME_REG)(wrCharR'range);
+          elsif RegsWrR(WR_FILL_HOME_REG) = '1' then
+            wrCharR   <= RegsR(WR_FILL_HOME_REG)(wrCharR'range);
             disClrR   <= '1';
             fsmR      <= FILL;
           end if;
@@ -256,7 +277,7 @@ begin
             disClrR   <= '1';
             fsmR      <= IDLE;
           end if;
-          
+
         when INIT =>
           -- fill screen with counting pattern
           -- (only done after a reset)
@@ -273,5 +294,64 @@ begin
       end case;
     end if;
   end process fsm;
+
+  ReadRegs : process (clk_i, rst_i)
+  begin
+    if rst_i = '1' then
+      rdAckR <= '0';
+      dat_o  <= (others => '0');
+    elsif rising_edge(clk_i) then
+      -- create the readback mux
+      dat_o <= (others => '0');
+      case adr_i(RD_BACK_WIDTH-1 downto 0) is
+        when RD_CURSOR_CNTL_REG =>
+          dat_o(cCntlR'range) <= cCntlR;
+
+        when RD_FG_COLOR_REG =>
+          dat_o(currFgColor'range) <= currFgColor;
+
+        when RD_BG_COLOR_REG =>
+          dat_o(currBgColor'range) <= currBgColor;
+
+        when RD_COLOR_INV_REG =>
+          dat_o(0) <= colorSwapR;
+
+        when RD_CURS_POS_HI_REG =>
+          dat_o <= RegsR(WR_CURS_POS_HI_REG);
+
+        when RD_CURS_POS_LO_REG =>
+          dat_o <= RegsR(WR_CURS_POS_LO_REG);
+
+        when RD_CHAR =>
+          dat_o <= disRdData(dat_o'range);
+
+        when RD_CHAR_ATTR =>
+          dat_o(DISPLAY_DATA_WIDTH-9 downto 0) <= disRdData(DISPLAY_DATA_WIDTH-1 downto 8);
+
+        when RD_DIS_COLS =>
+          dat_o <= to_slv(DIS_DESC.CharCols,8);
+          
+        when RD_DIS_ROWS =>
+          dat_o <= to_slv(DIS_DESC.CharRows,8);
+          
+        when RD_DIS_COLOR_BITS =>
+          dat_o <= to_slv(3,8);
+          
+        when RD_DIS_COLOR_MODE =>
+          dat_o <= to_slv(vnIF(TWO_COLOR_ONLY, 0, 1),8);
+          
+        when RD_DIS_FONT_ID =>
+          dat_o <= to_slv(DIS_DESC.Font.ID,8);
+
+        when others =>
+          dat_o <= (others => '1');
+
+      end case;
+
+      rdAckR <= stb_i and (not we_i);
+    end if;
+
+  end process ReadRegs;
+
 end rtl;
 

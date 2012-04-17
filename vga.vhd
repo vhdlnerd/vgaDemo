@@ -62,9 +62,12 @@ architecture rtl of vga is
   subtype  VCntr_type              is std_logic_vector(V_CNTR_WIDTH-1 downto 0);
   constant V_MAX_CNT               : VCntr_type := to_slv(V_FULL_LENGTH-1, V_CNTR_WIDTH);
   constant V_BLANK_END_CNT         : VCntr_type := to_slv(V_FULL_LENGTH-2, V_CNTR_WIDTH);
-  constant V_VISIBLE_CNT           : VCntr_type := to_slv(DIS_DESC.Vga.V_Visible-1, V_CNTR_WIDTH);
-  constant V_FRONT_PORCH_END       : VCntr_type := to_slv(DIS_DESC.Vga.V_Visible+DIS_DESC.Vga.V_FrontPorch-1, V_CNTR_WIDTH);
-  constant V_SYNC_END              : VCntr_type := to_slv(DIS_DESC.Vga.V_Visible+DIS_DESC.Vga.V_FrontPorch+DIS_DESC.Vga.V_Sync-1, V_CNTR_WIDTH);
+--  constant V_VISIBLE_CNT           : VCntr_type := to_slv(DIS_DESC.Vga.V_Visible-1, V_CNTR_WIDTH);
+--  constant V_FRONT_PORCH_END       : VCntr_type := to_slv(DIS_DESC.Vga.V_Visible+DIS_DESC.Vga.V_FrontPorch-1, V_CNTR_WIDTH);
+--  constant V_SYNC_END              : VCntr_type := to_slv(DIS_DESC.Vga.V_Visible+DIS_DESC.Vga.V_FrontPorch+DIS_DESC.Vga.V_Sync-1, V_CNTR_WIDTH);
+  constant V_VISIBLE_CNT           : VCntr_type := to_slv(DIS_DESC.Vga.V_Visible, V_CNTR_WIDTH);
+  constant V_FRONT_PORCH_END       : VCntr_type := to_slv(DIS_DESC.Vga.V_Visible+DIS_DESC.Vga.V_FrontPorch, V_CNTR_WIDTH);
+  constant V_SYNC_END              : VCntr_type := to_slv(DIS_DESC.Vga.V_Visible+DIS_DESC.Vga.V_FrontPorch+DIS_DESC.Vga.V_Sync, V_CNTR_WIDTH);
 
   -- Display constants (in units of chars):
   constant DIS_TOTAL               : natural := DIS_DESC.CharCols*DIS_DESC.CharRows;

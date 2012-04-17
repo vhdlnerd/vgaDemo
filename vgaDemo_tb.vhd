@@ -134,6 +134,28 @@ BEGIN
       spiStart <= '0';
       wait until rising_edge(spiSsel);
       wait for SPI_PERIOD;
+
+      sendData <= x"91";      -- readback
+      spiStart <= '1';
+      wait for 1 ns;
+      spiStart <= '0';
+      wait until rising_edge(spiSsel);
+      wait for SPI_PERIOD;
+      sendData <= x"5A";
+      spiStart <= '1';
+      wait for 1 ns;
+      spiStart <= '0';
+      wait until rising_edge(spiSsel);
+      wait for SPI_PERIOD;
+      sendData <= x"A5";
+      spiStart <= '1';
+      wait for 1 ns;
+      spiStart <= '0';
+      wait until rising_edge(spiSsel);
+      wait for SPI_PERIOD;
+      
+
+
       
       sendData <= x"04";
       spiStart <= '1';

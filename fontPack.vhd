@@ -15,6 +15,7 @@ package font_pack is
   constant FONT_ROM_SIZE : natural := 4096;
   type FontRom_type is array (0 to FONT_ROM_SIZE-1) of std_logic_vector(7 downto 0);
   type Font_type is record
+    ID       : natural;
     Width    : natural;
     Height   : natural;
     NumChars : natural;
@@ -3354,6 +3355,7 @@ package font_pack is
   );
 
   constant FONT_8X12X256 : Font_type := (
+    ID       => 1,
     Width    => 8,
     Height   => 12,
     NumChars => 256,
@@ -5543,6 +5545,7 @@ package font_pack is
   );
 
   constant FONT_8X16X128 : Font_type := (
+    ID       => 2,
     Width    => 8,
     Height   => 16,
     NumChars => 128,
@@ -7730,6 +7733,7 @@ package font_pack is
   );
 
   constant FONT_8X16X128_2 : Font_type := (
+    ID       => 3,
     Width    => 8,
     Height   => 16,
     NumChars => 128,

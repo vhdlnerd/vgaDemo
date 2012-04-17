@@ -81,7 +81,6 @@ end function to_slv;
 -- counter is required).  255 will return 8, also and 256 will 
 -- return 9.
 --
--- CONSTANT N_MS20 : INTEGER := INTEGER(CEIL(LOG2(REAL(MS20_DIV))));
 function vecLen(n : natural) return natural is
   variable t : unsigned(31 downto 0) := to_unsigned(n,32);
 begin
