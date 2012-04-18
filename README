@@ -1,0 +1,4 @@
+This project is a demo of the vnVGA firmware design.
+
+This project is coded in VHDL and targets a Papilio One 250k board (with a VGA wing).
+
