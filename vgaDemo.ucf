@@ -30,14 +30,13 @@ NET "rstLow_i" IOSTANDARD = LVTTL;
 NET "vSync_o" IOSTANDARD = LVTTL;
 NET "rstLow_i" PULLUP;
 
-#NET "led_o" LOC = P94 | IOSTANDARD = LVTTL;
 NET "spiSsel_i" LOC = P92 | IOSTANDARD = LVTTL;
 NET "spiSck_i" LOC = P91 | IOSTANDARD = LVTTL;
 NET "spiMosi_i" LOC = P95 | IOSTANDARD = LVTTL;
 NET "spiMiso_o" LOC = P98 | IOSTANDARD = LVTTL;
 
 
-## This design was tested with a Arduino Mega2560 board
+## This design was tested with a Arduino Mega2560 board.
 ## WARNING: This Arduino board (and most others) have 5V
 ##          I/O!!!  Do not connect this directly to the
 ##          Papilio!!  You must use series resisters on 
