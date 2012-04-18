@@ -1,15 +1,62 @@
 ----------------------------------------------------------------------------------
 -- Company: 
--- Engineer: 
+-- Engineer:       VHDLNerd
 -- 
 -- Create Date:    09:09:47 04/04/2012 
--- Design Name: 
+-- Design Name:    
 -- Module Name:    vnVga - rtl 
 -- Project Name: 
 -- Target Devices: 
 -- Tool versions: 
--- Description: 
+-- Description: This is a wrapper arounf the lower level 'vga' module.
+--              This wrapper implements a semi-Wishbone complient interface
+--              to a set of 8-bit registers.  These registers are used to 
+--              controller the 'vga' modlule and give access to the screen
+--              memory (which is also create in this module).
 --
+-- Register Map
+-- ------------
+--
+-- Write Registers:
+--   Address      Description
+--   ------- -------------------------------------------------
+--    0x00 : Set Cursor Control (lower 3 bits)
+--    0x01 : Set FG Color (lower 3 bits)
+--    0x02 : Set BG Color (lower 3 bits)
+--    0x03 : Set Inverse  (LSB)  -- only used for 2 Color output
+--    0x04 : Set Cursor Position High Byte
+--    0x05 : Set Cursor Position Low Byte
+--    0x06 : Set Char Data -- Char to display at current cursor position
+--    0x07 : Set Char Data++, display Char and increment cursor position
+--    0x08 : Fill Display and home cursor
+--    0x09 : HW Scroll (Future Feature -- not implemented, yet)
+--
+-- Read Registers:
+--   Address      Description
+--   ------- -------------------------------------------------
+--    0x00 : Get Current Cursor Control (lower 3 bits)
+--    0x01 : Get Current FG Color (lower 3 bits)
+--    0x02 : Get Current BG Color (lower 3 bits)
+--    0x03 : Get Current Inverse  (LSB)  -- only used for 2 Color output
+--    0x04 : Get Current Cursor Position High Byte
+--    0x05 : Get Current Cursor Position Low Byte
+--    0x06 : Read Char Data at current cursor position (not tested, yet)
+--    0x07 : Read Char Data at current cursor position and increment cursor position (not tested, yet)
+--    0x08 : Read any upper bits of the current cursor position's screen RAM
+--           This is either the 6-bits of color info (FG and BG) or 1-bit for the
+--           invert flag for the 2 Color Only Mode (TWO_COLOR_ONLY set to true)
+--    0x10 : Get number of columns in the display
+--    0x11 : Get number of rows in the display
+--    0x12 : Get number of color bits supported (always 3 in this design)
+--    0x13 : Get color mode (0=two color mode, 1=full color mode)
+--    0x14 : Get font ID
+--
+-- Warning:  There is a bug in XST (ver 13.4) where a VHDL constant is treated as something
+--           varies!  See the RD_BACK_WIDTH constant below.  If this constant is hard-coded to
+--           the literal 5 it works. If the constant is set to: 'vecLen(NUM_RD_REGS-1)' (which
+--           is a constant value), XST complains about that the selector of a case statment cannot be
+--           an unconstained vector.  
+-- 
 -- Dependencies: 
 --
 -- Revision: 
@@ -25,17 +72,6 @@ library work;
 use work.display_pack.all;
 use work.vn_pack.all;
 
--- Write Registers:
---    0x00 : Cursor Control (lower 3 bits)
---    0x01 : FG Color (lower 3 bits)
---    0x02 : BG Color (lower 3 bits)
---    0x03 : Inverse  (LSB)  -- only used for 2 Color output
---    0x04 : Cursor Position High Byte
---    0x05 : Cursor Position Low Byte
---    0x06 : Char Data -- Char to display at current cursor position
---    0x07 : Char Data++, display Char and increment cursor position
---    0x08 : Fill Display and home cursor
---    0x09 : HW Scroll (Future Feature)
 
 entity vnVga is
     generic (
@@ -66,7 +102,7 @@ architecture rtl of vnVga is
   
   constant NUM_WR_REGS        : natural := 16;
   constant NUM_RD_REGS        : natural := 32;
-  --constant RD_BACK_WIDTH         : natural := vecLen(NUM_RD_REGS-1);   -- Stupid XST! This will cause errors later! Why!?
+  --constant RD_BACK_WIDTH         : natural := vecLen(NUM_RD_REGS-1);   -- Stupid XST! This will cause an error later! Why!?
   constant RD_BACK_WIDTH         : natural := 5;    -- XST works with this.
 
   -- define the register map for writable registers.
@@ -155,20 +191,22 @@ begin
       vSync_o     =>  vSync_o
       );
 
+  -- Dual ported RAM used as the display (screen) memory
   display_RAM : entity work.vnDpRam(rtl)
     port map (
-      -- Port A: read and write
+      -- Port A: read and write (for the Wishbone interface)
       clkaIn  => clk_i,
       wrEnaIn => disWrEnR,
       addraIn => disWrAddr,
       dataaIn => disWrData,
       qaOut   => disRdData,
-      -- Port B: read only
+      -- Port B: read only  (for the 'vga' module to read)
       clkbIn  => clk_i,
       addrbIn => disAddr,
       qbOut   => disData);
   reg(charDataR, disData(charDataR'range), clk_i, rst_i);
 
+  -- This is the display counter (i.e. the current cursor position)
   dis_cntr : entity work.vnCounter(rtl)
     port map (
       clk_i     => clk_i,            -- clock
@@ -182,6 +220,12 @@ begin
       cnt_o     => disWrAddr         -- count value
       );
 
+  -- 
+  -- In two color mode, the text display has one FG and one BG color, only.
+  -- However, the FG and BG color can be one of eight posibble colors.
+  -- In this mode the display RAM is 9-bits wide, 8-bits for the char to
+  -- display and the MSB is an inverse flag (if set, the FG and BG colors
+  -- are swapped).
   TWO_COLOR : if TWO_COLOR_ONLY generate
     signal fgColor     : std_logic_vector(2 downto 0);
     signal bgColor     : std_logic_vector(2 downto 0);
@@ -198,6 +242,18 @@ begin
     disWrData(wrCharR'range) <= wrCharR;
   end generate TWO_COLOR;
 
+  --
+  -- Glorious full color mode!!! In this mode you get
+  -- eight (count them, eight) colors choices for the BG and FG 
+  -- colors of each char on the display.  In this mode the 
+  -- display RAM needs to be atleast 14-bits wide: 8-bits for
+  -- char code, 3-bits for the FG color and 3-bits for the
+  -- BG color.
+  --  Display memory word: 
+  --  |13|12|11|10| 9| 8| 7| 6| 5| 4| 3| 2| 1| 0|
+  --  |<--BG-->|<--FG-->|<------Char Code------>|
+  -- (Bits 16:14 are reserved for future use.)
+  --
   FULL_COLOR : if not TWO_COLOR_ONLY generate
   begin
     -- Read data from display RAM
@@ -216,7 +272,7 @@ begin
   -- Create the writable registers:
   WR_REGS : for i in RegsR'range generate
     constant ADDR_WIDTH : natural := vecLen(NUM_WR_REGS-1);
-    constant RST_VALS : Regs_type := (x"00", x"02", others => x"00");
+    constant RST_VALS : Regs_type := (x"00", x"02", others => x"00"); -- default FG to green, BG to black
     signal match : std_logic;
   begin
     match <= '1' when to_integer(unsigned(adr_i(ADDR_WIDTH-1 downto 0)))=i and stb_i='1' and we_i='1' else '0';
@@ -224,7 +280,7 @@ begin
     reg(RegsWrR(i), match, clk_i, rst_i);
   end generate WR_REGS;
   
-  -- Map the write regs to some signals
+  -- Map the write regs to some internal signals
   cCntlR      <= RegsR(WR_CURSOR_CNTL_REG)(cCntlR'range);
   currFgColor <= RegsR(WR_FG_COLOR_REG)(currFgColor'range);
   currBgColor <= RegsR(WR_BG_COLOR_REG)(currBgColor'range);
@@ -295,6 +351,8 @@ begin
     end if;
   end process fsm;
 
+  -- Create the readable registers.
+  -- (This is really just a registered mux.)
   ReadRegs : process (clk_i, rst_i)
   begin
     if rst_i = '1' then
@@ -350,8 +408,5 @@ begin
 
       rdAckR <= stb_i and (not we_i);
     end if;
-
   end process ReadRegs;
-
 end rtl;
-

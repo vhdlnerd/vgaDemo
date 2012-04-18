@@ -1,6 +1,16 @@
 --
--- Module: syscon
--- Based on Xilinx Architecture Wizard output
+-- Module: syscon 
+--
+-- Generates a VGA pixel clock based on the VGA_CLK_OUT_PERIOD generic.  The 
+-- period (in ps) specified by VGA_CLK_OUT_PERIOD must be in the LUT constant.
+-- To add a new VGA pixel rate, just add a new entery i nthe LUT constant.
+--
+-- The LUT is used to look up the correct M and D values for the DCM in oeder
+-- to create the desired freq.
+--
+-- Note: Of course, the code is NOT generic -- it will only work for a
+--       Xilinx Spartan 3E FPGA (of other Xilinx FPGA with the exact same
+--       DCM).
 --
 
 library ieee;
@@ -12,7 +22,7 @@ use UNISIM.Vcomponents.ALL;
 entity syscon is
   generic (
     SYS_CLK_IN_PERIOD  : real := 31.125;         -- default to 32MHz input clock
-    VGA_CLK_OUT_PERIOD : natural := 39722        -- default to ~25.175MHz
+    VGA_CLK_OUT_PERIOD : natural := 39722        -- in ps, defaults to ~25.175MHz
   );
    port ( sysClk_i       : in    std_logic;     -- external system clock input
           rst_i          : in    std_logic;     -- external async. reset input
@@ -20,21 +30,21 @@ entity syscon is
           clkVga_o       : out   std_logic;     -- VGA pixel clock
           clk_o          : out   std_logic;     -- sysClk
           clk2x_o        : out   std_logic;     -- sysClk * 2
-          rst_o          : out   std_logic;
-          vgaRst_o       : out   std_logic;
+          rst_o          : out   std_logic;     -- reset for the system clock domain
+          vgaRst_o       : out   std_logic;     -- reset for the VGA pixel clock domain
           locked_o       : out   std_logic);    -- DCM locked signal
 end syscon;
 
 architecture structure of syscon is
   type lut_rec_type is record 
-    freq   : real;     -- in MHz
+    freq   : real;     -- in MHz    (Not used,yet)
     period : natural;  -- in ps
     mul    : natural;  -- DCM's CLKFX_MULTIPLY value
     div    : natural;  -- DCM's CLKFX_DIVIDE value
   end record lut_rec_type;
-  
+
   type lut_type is array (natural range <>) of lut_rec_type;
-  
+
   constant LUT : lut_type := (
             ( 25.175, 39722, 11, 14),      -- ~ 0.13% error
             ( 50.000, 20000, 25, 16),      
@@ -43,7 +53,8 @@ architecture structure of syscon is
             (108.000,  9259, 27,  8),
             (162.000,  6173,  5,  1)       -- ~ 1.23% error
            );
-  
+
+  -- Function to lookup the multiplier
   function luDiv(key : natural) return natural is
   begin
     for i in LUT'range loop
@@ -58,6 +69,7 @@ architecture structure of syscon is
     return 1;
   end function luDiv;
 
+  -- Function to lookup the divider
   function luMul(key : natural) return natural is
   begin
     for i in LUT'range loop
@@ -72,24 +84,24 @@ architecture structure of syscon is
     return 1;
   end function luMul;
 
-   constant CLKFX_MULTIPLY  : natural := luMul(VGA_CLK_OUT_PERIOD);
-   constant CLKFX_DIVIDE    : natural := luDiv(VGA_CLK_OUT_PERIOD);
-   
-   signal CLKDV_BUF         : std_logic;
-   signal clkFb             : std_logic;
-   signal CLKFX_BUF         : std_logic;
-   signal CLKIN_IBUFG       : std_logic;
-   signal CLK0_BUF          : std_logic;
-   signal CLK2X_BUF         : std_logic;
-   signal GND_BIT           : std_logic;
-   signal clkVga            : std_logic;
-   signal locked            : std_logic;
-   signal rstVec            : std_logic_vector(3 downto 0);
-   signal vgaRstVec         : std_logic_vector(3 downto 0);
+  constant CLKFX_MULTIPLY  : natural := luMul(VGA_CLK_OUT_PERIOD);
+  constant CLKFX_DIVIDE    : natural := luDiv(VGA_CLK_OUT_PERIOD);
 
-   attribute keep : boolean ;
-   attribute keep of rstVec, vgaRstVec : signal is true ;
-   
+  signal CLKDV_BUF         : std_logic;
+  signal clkFb             : std_logic;
+  signal CLKFX_BUF         : std_logic;
+  signal CLKIN_IBUFG       : std_logic;
+  signal CLK0_BUF          : std_logic;
+  signal CLK2X_BUF         : std_logic;
+  signal GND_BIT           : std_logic;
+  signal clkVga            : std_logic;
+  signal locked            : std_logic;
+  signal rstVec            : std_logic_vector(3 downto 0);
+  signal vgaRstVec         : std_logic_vector(3 downto 0);
+
+  attribute keep : boolean ;
+  attribute keep of rstVec, vgaRstVec : signal is true ;
+
 begin
    GND_BIT  <= '0';
    clk_o    <= clkFb;
@@ -149,6 +161,18 @@ begin
                 STATUS    => open);
    
 
+  --
+  -- Create the resets for the two clock domains.
+  -- 
+  -- This is an attempt to provide a reset that async
+  -- asserts and sync deasserts.  This code needs some work;
+  -- you want the lock signal from the DCM involved here to
+  -- keep the shifters from shifting until the DCM locks.  
+  -- However, the lock signal cannot change sync. to both
+  -- output clocks; so, you cannot use the lock signal directly.
+  --  
+  -- Anyway, this is good enough for hobby stuff, but it won't
+  -- fly on the space shuttle!
   sysRst_inst : entity work.vnShiftLeftReg(rtl)
     generic map(
            RST_VAL   => "1"       -- Async reset value
@@ -170,9 +194,7 @@ begin
            rst_i     => rst_i,    -- Active high reset
            data_i    => '0',      -- New serial data input
            ldVal_i   => "0",      -- Load value
-           reg_o	   => vgaRstVec    -- The shift register output
+           reg_o	   => vgaRstVec -- The shift register output
 			  );
 
 end structure;
-
-

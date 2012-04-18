@@ -1,3 +1,36 @@
+----------------------------------------------------------------------------------
+-- Company: 
+-- Engineer:       VHDLNerd
+-- 
+-- Create Date:    03/??/2012 
+-- Design Name:    
+-- Module Name:    vga - rtl 
+-- Project Name: 
+-- Target Devices: 
+-- Tool versions: 
+-- Description: This is the VGA core; it generates all the timing for the VGA output.
+--              Also, the font ROM is created here.
+--              Setting of the DIS_DESC generic, determines the VGA resolution and
+--              font used. See display_pack.vhd for all the defined VGA displays.
+--              Note: The display RAM is outside of this module.
+--
+--              To create the VGA timing, display RAM addressing, font ROM addessing,
+--              and font data shifting, a bunch of counters and a shift register are
+--              needed.  Also, a lot of comparisons to these counter's output are
+--              are required.
+--              The magic in this module is the use of the DIS_DESC generic to size
+--              all counters and set the comparison values. (See the ton of constants
+--              created below.)
+--
+--              Also, a hardware cursor is implemented.
+--
+-- Dependencies: 
+--
+-- Revision: 
+-- Revision 0.01 - File Created
+-- Additional Comments:   I really need to add more comments to this code! 
+--
+----------------------------------------------------------------------------------
 library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.NUMERIC_STD.ALL;
@@ -17,7 +50,6 @@ entity vga is
     -- Display RAM ports (note fgColor_i and bgColor_i can come from the
     --                         Display RAM or be constants)
     disAddr_o   : out std_logic_vector;               -- screen buffer address
---    disData_i   : in  std_logic_vector(7 downto 0);   -- screen data (a byte even if the upper bit is not used)
     disData_i   : in  std_logic_vector;               -- screen data (7 or 8 bits)
     fgColor_i   : in  std_logic_vector(2 downto 0);   -- Foreground color triplet (2=>Red, 1=>Green, 0=>Blue)
     bgColor_i   : in  std_logic_vector(2 downto 0);   -- Background color triplet (2=>Red, 1=>Green, 0=>Blue)
@@ -62,9 +94,6 @@ architecture rtl of vga is
   subtype  VCntr_type              is std_logic_vector(V_CNTR_WIDTH-1 downto 0);
   constant V_MAX_CNT               : VCntr_type := to_slv(V_FULL_LENGTH-1, V_CNTR_WIDTH);
   constant V_BLANK_END_CNT         : VCntr_type := to_slv(V_FULL_LENGTH-2, V_CNTR_WIDTH);
---  constant V_VISIBLE_CNT           : VCntr_type := to_slv(DIS_DESC.Vga.V_Visible-1, V_CNTR_WIDTH);
---  constant V_FRONT_PORCH_END       : VCntr_type := to_slv(DIS_DESC.Vga.V_Visible+DIS_DESC.Vga.V_FrontPorch-1, V_CNTR_WIDTH);
---  constant V_SYNC_END              : VCntr_type := to_slv(DIS_DESC.Vga.V_Visible+DIS_DESC.Vga.V_FrontPorch+DIS_DESC.Vga.V_Sync-1, V_CNTR_WIDTH);
   constant V_VISIBLE_CNT           : VCntr_type := to_slv(DIS_DESC.Vga.V_Visible, V_CNTR_WIDTH);
   constant V_FRONT_PORCH_END       : VCntr_type := to_slv(DIS_DESC.Vga.V_Visible+DIS_DESC.Vga.V_FrontPorch, V_CNTR_WIDTH);
   constant V_SYNC_END              : VCntr_type := to_slv(DIS_DESC.Vga.V_Visible+DIS_DESC.Vga.V_FrontPorch+DIS_DESC.Vga.V_Sync, V_CNTR_WIDTH);
@@ -257,10 +286,9 @@ begin
   atCursLoc <= '1' when disCntrR = cursLoc_i else '0';
   reg(atCursLocR, atCursLoc, clk_i, rst_i, '0', fontXCntrClr);  -- updates at each font row scan
 
-  -- Are we at the font row where the under line cursor needs to be turn on?
+  -- Are we at the font row where the under line cursor needs to be turned on?
   cursUlOn <= '1' when fontYCntrR = CURSOR_UL_ON_CNT else '0';
   --srReg:  q         set        clear      clk    rst   RST_VAL='0'
---  scReg(cursUlOnR, cursUlOn, fontYCntrTcR, clk_i, rst_i);
   scReg(cursUlOnR, cursUlOn, fontYCntrClr, clk_i, rst_i);
 
   -- blinking cursor counter -- increments every frame and free running

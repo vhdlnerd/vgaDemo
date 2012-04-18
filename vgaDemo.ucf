@@ -1,5 +1,11 @@
 
 #Created by Constraints Editor (xc3s250e-vq100-4) - 2012/03/30
+
+#
+# This UCF file is for the 250k version of the Papilio One board.
+#   A VGA Wing is plugged into CH and a SPI interface is on CL
+#
+
 NET "clk_i" TNM_NET = "clk_i";
 TIMESPEC TS_SysClk = PERIOD "clk_i" 31.125 ns HIGH 50 %;
 
@@ -31,6 +37,12 @@ NET "spiMosi_i" LOC = P95 | IOSTANDARD = LVTTL;
 NET "spiMiso_o" LOC = P98 | IOSTANDARD = LVTTL;
 
 
+## This design was tested with a Arduino Mega2560 board
+## WARNING: This Arduino board (and most others) have 5V
+##          I/O!!!  Do not connect this directly to the
+##          Papilio!!  You must use series resisters on 
+##          the SPI signals (330ohms will work.)
+ 
 # Pin AL   BL   CL     SPI      Mega2560 Pin
 # 07  P57  P61  P4     -          
 # 06  P53  P63  P3     - 

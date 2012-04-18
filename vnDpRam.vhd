@@ -1,9 +1,23 @@
+----------------------------------------------------------------------------------
+-- Designer: VhdlNerd
+-- 
+-- Create Date:    03/??/2012 
+-- Design Name: 
+-- Module Name:    vnDpRam - rtl 
+-- Project Name: 
+-- Target Devices: 
+-- Tool versions: 
+-- Description:    Dual Port RAM -- modeled after a Xilinx example.
 --
--- Dual Port RAM -- modeled after a Xilinx example
+-- Dependencies: 
+--
+-- Revision: 
+-- Revision 0.01 - File Created
 --
 
-library ieee;     use ieee.std_logic_1164.all;
-                  use ieee.std_logic_unsigned.all;
+library ieee;
+use ieee.std_logic_1164.all;
+use ieee.std_logic_unsigned.all;
 
 entity vnDpRam is
   port (
@@ -31,7 +45,6 @@ architecture rtl of vnDpRam is
      --  := (others => (others => '0'))
        -- synthesis translate_on
       ;
-
 begin
   process (clkaIn)
   begin

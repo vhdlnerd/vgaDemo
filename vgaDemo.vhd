@@ -1,14 +1,18 @@
 ----------------------------------------------------------------------------------
 -- Company: 
--- Engineer: 
+-- Engineer:       VHDLNerd
 -- 
 -- Create Date:    22:23:49 03/27/2012 
--- Design Name: 
+-- Design Name:    
 -- Module Name:    vgaDemo - rtl 
 -- Project Name: 
 -- Target Devices: 
 -- Tool versions: 
--- Description: 
+-- Description: This is the toplevel of the VGA Demo design.  It has been tested on
+--              a Papilio One 250k.  This file creates a simple SPI interface to the vnVGA
+--              module.  Setting the two generics, TWO_COLOR_ONLY and DIS_DESC will
+--              determine the VGA resolution and font used.  Beware XST will die on the
+--              the design if too many BRAMs are required.
 --
 -- Dependencies: 
 --
@@ -18,12 +22,12 @@
 --
 ----------------------------------------------------------------------------------
 library IEEE;
-use IEEE.STD_LOGIC_1164.ALL;
-use IEEE.NUMERIC_STD.ALL;
+              use IEEE.STD_LOGIC_1164.ALL;
+              use IEEE.NUMERIC_STD.ALL;
 
 library work;
-use work.display_pack.all;
-use work.vn_pack.all;
+              use work.display_pack.all;    -- define all the support VGA display configurations
+              use work.vn_pack.all;
 
 entity vgaDemo is
     generic (
@@ -70,7 +74,6 @@ signal color         : std_logic_vector(2 downto 0);
 signal fgColor       : std_logic_vector(2 downto 0);
 signal bgColor       : std_logic_vector(2 downto 0);
 
-
 signal weR           : std_logic;
 signal stbR          : std_logic;
 signal ack           : std_logic;
@@ -92,67 +95,71 @@ signal spiWrAck      : std_logic;
 
 
 begin
-zero8 <= (others => '0');
-reset <= not rstLow_i;
+  zero8 <= (others => '0'); 
+  reset <= not rstLow_i;
 
-syscon_inst: entity work.syscon(structure)
-  generic map (
-          VGA_CLK_OUT_PERIOD => DIS_DESC.Vga.PixelClockPeriod
-  )
-  port map (
-          sysClk_i       => clk_i,     -- external system clock input
-          rst_i          => reset,     -- external async. reset input
-          clkDiv2_o      => open,     -- sysClk / 2 output
-          clkVga_o       => clk,      -- VGA pixel clock
-          clk_o          => open,     -- sysClk
-          clk2x_o        => open,     -- sysClk * 2
-          rst_o          => open,     -- sysClk domain reset
-          vgaRst_o       => rst,      -- VGA Pixel clock domain reset
-          locked_o       => open);    -- DCM locked signal
+  syscon_inst: entity work.syscon(structure)
+    generic map (
+            VGA_CLK_OUT_PERIOD => DIS_DESC.Vga.PixelClockPeriod
+    )
+    port map (
+            sysClk_i       => clk_i,     -- external system clock input
+            rst_i          => reset,     -- external async. reset input
+            clkDiv2_o      => open,     -- sysClk / 2 output
+            clkVga_o       => clk,      -- VGA pixel clock
+            clk_o          => open,     -- sysClk
+            clk2x_o        => open,     -- sysClk * 2
+            rst_o          => open,     -- sysClk domain reset
+            vgaRst_o       => rst,      -- VGA Pixel clock domain reset
+            locked_o       => open);    -- DCM locked signal
 
-spi_inst : entity work.spi_slave(rtl)
-    generic map(   
-        N => 8
-        )
-    port map(  
-        clk_i      => clk,
-        spi_ssel_i => spiSsel_i,
-        spi_sck_i  => spiSck_i,
-        spi_mosi_i => spiMosi_i,
-        spi_miso_o => spiMiso_o,
-        di_req_o   => spiReq,             -- preload lookahead data request line
-        di_i       => toSpiDataR,            -- parallel load data in (clocked in on rising edge of clk_i)
-        wren_i     => spiWrEnR,              -- user data write enable
-        wr_ack_o   => spiWrAck,             -- write acknowledge
-        do_valid_o => spiDataEn,        -- do_o data valid strobe, valid during one clk_i rising edge.
-        do_o       => spiData           -- parallel output (clocked out on falling clk_i)
-    );
+  -- This SPI moldule is from OpenCores.  It is a little quirky but it works.
+  spi_inst : entity work.spi_slave(rtl)
+      generic map(   
+          N => 8
+          )
+      port map(  
+          clk_i      => clk,
+          spi_ssel_i => spiSsel_i,
+          spi_sck_i  => spiSck_i,
+          spi_mosi_i => spiMosi_i,
+          spi_miso_o => spiMiso_o,
+          di_req_o   => spiReq,           -- preload lookahead data request line
+          di_i       => toSpiDataR,       -- parallel load data in (clocked in on rising edge of clk_i)
+          wren_i     => spiWrEnR,         -- user data write enable
+          wr_ack_o   => spiWrAck,         -- write acknowledge
+          do_valid_o => spiDataEn,        -- do_o data valid strobe, valid during one clk_i rising edge.
+          do_o       => spiData           -- parallel output (clocked out on falling clk_i)
+      );
 
-vga_inst : entity work.vnVga(rtl)
-  generic map(
-    DIS_DESC          => DIS_DESC,
-    TWO_COLOR_ONLY    => TWO_COLOR_ONLY
-  )
-  port map (
-    rst_i       =>  rst,
-    clk_i       =>  clk,
-    -- wishbone bus
-    we_i        =>  weR,
-    stb_i       =>  stbR,
-    ack_o       =>  ack,
-    adr_i       =>  addrR,
-    dat_i       =>  dataToVgaR,
-    dat_o       =>  dataFromVgaR,
-    -- VGA Outputs
-    color_o     =>  color,     -- Video color triplet (2=>Red, 1=>Green, 0=>Blue)
-    hSync_o     =>  hSync_o,
-    vSync_o     =>  vSync_o
-    );   
+  -- The fancy thing we are showing off: the vnVGA controller
+  vga_inst : entity work.vnVga(rtl)
+    generic map(
+      DIS_DESC          => DIS_DESC,
+      TWO_COLOR_ONLY    => TWO_COLOR_ONLY
+    )
+    port map (
+      rst_i       =>  rst,
+      clk_i       =>  clk,
+      -- wishbone bus
+      we_i        =>  weR,
+      stb_i       =>  stbR,
+      ack_o       =>  ack,
+      adr_i       =>  addrR,
+      dat_i       =>  dataToVgaR,
+      dat_o       =>  dataFromVgaR,
+      -- VGA Outputs
+      color_o     =>  color,     -- Video color triplet (2=>Red, 1=>Green, 0=>Blue)
+      hSync_o     =>  hSync_o,
+      vSync_o     =>  vSync_o
+      );   
 
   r_o <= color(2);
   g_o <= color(1);
   b_o <= color(0);
 
+  -- A simple (and crude) FSM to handle SPI traffic and hand it off
+  -- to the vnVGA module.
   SPI_FSM : process(clk, rst)
   begin
     if rst = '1' then
